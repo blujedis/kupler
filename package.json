@@ -15,7 +15,6 @@
   "scripts": {
     "commit-pre": "node ./prepost.cjs pre",
     "commit-post": "node ./prepost.cjs post",
-    "prepare": "husky install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -43,14 +42,8 @@
     "lint-staged": "^11.0.0",
     "log-symbols": "^5.0.0",
     "npm-check-updates": "^11.8.1",
+    "prettier": "^2.3.2",
     "table": "^6.7.1"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm run commit-pre && lint-staged",
-      "post-commit": "npm run commit-post",
-      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
-    }
   },
   "commitlint": {
     "extends": [
@@ -59,12 +52,10 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "git add"
+      "eslint --fix"
     ],
     "*.{json,md,yml}": [
-      "prettier --write",
-      "git add"
+      "prettier --write"
     ]
   }
 }
