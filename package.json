@@ -15,7 +15,7 @@
   "scripts": {
     "commit-pre": "node ./prepost.cjs pre",
     "commit-post": "node ./prepost.cjs post",
-    "postinstall": "husky install",
+    "prepare": "husky install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
