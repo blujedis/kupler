@@ -1,10 +1,14 @@
-# Kupler  
+# Kupler (Experimental)  
 
 Utility for managing globally linked packages. One of the issues you run into with packages like [React](https://reactjs.org) is that you cannot run multiple instances of it. This requires you to link your library or other package to the same instance of react. 
 
 The issues arises when you forget where you linked it. There are occassions where even running <code>--force</code> to remove the link is problematic. 
 
-Kupler simply provides a management of packages that are going to be used as singletons.
+Kupler simply provides a management of packages that are going to be used for linking to.
+
+### Doesn't NPM Do This Already?
+
+Yeah pretty much, basically all we're doing here is adding a few helpers to better understand what's linked and where, and it ensures thes packages are always linked from one specific place. Again this prevents issues where we link a package then move it, delete or whatever. Kupler just makes this all a little cleaner. 
 
 ## Getting Started
 
@@ -55,7 +59,7 @@ You should see something similar to the below:
 
 ![Link Status Image](fixtures/status.png)
 
-You can also show the status of all globally linked packages. Just add the **-d** or **--detail** flag. Since we are looking at global packages we provide the path where they are linked. There is no need to show this path without the --detail flag as we know they are only linked locally.
+You can also show the status of all globally linked packages. Just add the **-g** or **--global** flag. Since we are looking at global packages we provide the path where they are linked. There is no need to show this path without the --global flag as we know they are only linked locally.
 
 ![Link Status Image](fixtures/status-all.png)
 

@@ -3,8 +3,9 @@
 import { table } from 'table';
 import { fileURLToPath } from 'url';
 import { join, dirname, sep } from 'path';
-import { existsSync, readdirSync, readFileSync, realpathSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, symlinkSync, unlinkSync } from 'fs';
 import { spawnSync as spawn } from 'child_process';
+import nodeDirs from 'global-dirs';
 import colors from 'ansi-colors';
 import symbols from 'log-symbols';
 
@@ -16,10 +17,15 @@ const argv = process.argv.slice(2);
 const appName = 'kupler';
 const cmd = argv.shift();
 const cwd = process.cwd();
-const allowedCommands = ['link', 'unlink', 'help', 'status', 'path', 'version', 'install', 'uninstall', 'upgrade'];
+const globalDirs = getDirectories(getGlobalPath());
+const allowedCommands = ['link', 'unlink', 'help', 'status', 'path', 'version', 'install', 'uninstall', 'upgrade', 'prefix', 'use', 'unuse'];
+
 
 if (!allowedCommands.includes(cmd)) {
-  console.warn(`command ${cmd} is unknown try one of [${allowedCommands.join(', ')}] or: \n\n \`$ ${appName} help\`\n`)
+  const commandList = `${allowedCommands.join('\n')}`
+  console.warn(colors.yellow(`\n${symbols.warning} \`${cmd}\` is NOT a known command, available commands:\n`));
+  console.log(commandList + '\n');
+  console.log(colors.blue(`usage: $ <command> [module] [...options]\n`))
   process.exit();
 }
 
@@ -36,15 +42,15 @@ ${colors.cyan('commands:')}
   link        links locally installed package
   unlink      unlinks locally installed package
   use         links linked package to current
-  unuse       unlinks locally linked packaged.
+  unuse       unlinks locally linked packaged
   status      lists global linked package status table
   version     displays Kupler version
   path        displays Kupler install path
+  prefix      displays Nodes prefix path
   help        displays Kupler menu
 
 ${colors.cyan('options:')}
-  -d, --detail   display all globals & their status
-  -a, --alias    install package with alias
+  -g, --global   display all globals & status
 `;
 ;
 
@@ -52,12 +58,15 @@ function getDirname() {
   return join(dirname(fileURLToPath(import.meta.url)), '..');
 }
 
-const getPrefix = () => {
-  const child = spawn('npm', ['config', 'get', 'prefix'], { stdio: 'pipe' });
-  return (child.stdout || '').toString().replace(/\n/g, '');
+function getPrefixPath() {
+  return nodeDirs.npm.prefix;
 };
 
-const getDirectories = source => {
+function getGlobalPath() {
+  return nodeDirs.npm.packages;
+}
+
+function getDirectories(source) {
 
   return readdirSync(source, { withFileTypes: true })
     .filter(dirent => dirent.isDirectory() || dirent.isSymbolicLink())
@@ -68,6 +77,9 @@ const getDirectories = source => {
         stats.path = join(source, c.name);
         stats.isSymbolicLink = c.isSymbolicLink();
         stats.realPath = realpathSync(stats.path);
+        stats.pathExists = existsSync(stats.realPath);
+        stats.isLinked = stats.isSymbolicLink && stats.realPath.includes(__dirname) && dependencies.includes(c.name);
+        stats.isMissing = dependencies.includes(c.name) && stats.realPath.includes(__dirname) && !stats.pathExists;
       }
       catch (_) { }
       stats.realPath = stats.realPath || stats.path;
@@ -77,11 +89,16 @@ const getDirectories = source => {
 
 };
 
-const getLinked = (globalDirs) => {
-  globalDirs = globalDirs || getDirectories(output).names;
-  if (globalDirs.names)
-    globalDirs = globalDirs.names;
-  return globalDirs.filter(v => dependencies.includes(v));
+const getLinked = () => {
+  const names = globalDirs.names;
+  return names.filter(v => {
+    const stats = globalDirs.stats[v];
+    return stats.isLinked;
+  });
+};
+
+const getMissing = () => {
+  return Object.keys(globalDirs.stats).filter(v => globalDirs.stats[v].isMissing);
 };
 
 const isInstalled = (moduleName) => {
@@ -96,15 +113,57 @@ const runLinkUnlink = (command, moduleName) => {
       error: new Error(`cannot \'${command}\' using package name of undefined.`)
     }
 
+  // checks if this package was install as
+  // npm:package@some_alt_version
+  // this means it's an alias install and
+  // we need to link differently.
+  const isAlias = /^npm:/.test(pkg.dependencies[moduleName]);
+
   if (!isInstalled(moduleName)) {
     if (dependencies.includes(moduleName))
       console.warn(`package.json includes \'${moduleName}\' but is not installed in node_modules.`)
     return { error: new Error(`package \'${moduleName}\' is not installed.`) };
   }
 
+  let child;
   const rundir = join(__dirname, `node_modules/${moduleName}`);
-  const args = [command];
-  const child = spawn('npm', args, { stdio: 'inherit', cwd: rundir });
+
+  // Perhaps there's a syntax we can use but running
+  // npm link in the directory will only duplicate the
+  // link and not create a new link to the alias package
+  // which is what we need. So manually create the link.
+  if (isAlias) {
+    try {
+
+      const globalLinkPath = join(getGlobalPath(), moduleName);
+
+      if (command === 'link') {
+        symlinkSync(rundir, globalLinkPath);
+        console.log(rundir, '->', globalLinkPath);
+      }
+
+      else {
+        unlinkSync(globalLinkPath);
+        console.log('unlinked: ' + rundir, '->', globalLinkPath);
+      }
+
+
+      child = {
+        error: null
+      };
+
+    }
+
+    catch (err) {
+      child = {
+        error: err
+      };
+    }
+
+  }
+  else {
+    child = spawn('npm', [command], { stdio: 'inherit', cwd: rundir });
+  }
 
   return child;
 
@@ -112,13 +171,10 @@ const runLinkUnlink = (command, moduleName) => {
 
 const runInstallUninstall = (command, moduleName) => {
 
-  if (command === 'uninstall' && !moduleName)
-    return {
-      error: new Error(`cannot \'${command}\' using package name of undefined.`)
-    }
-
   const rundir = __dirname;
-  const args = command === 'uninstall' ? [command, moduleName, ...argv] : [command, ...argv];
+  if (moduleName)
+    argv.unshift(moduleName);
+  const args = [command, ...argv];
   const child = spawn('npm', args, { stdio: 'inherit', cwd: rundir });
 
   return child;
@@ -167,22 +223,21 @@ const runUpgrade = (command) => {
 
 const runStatus = () => {
 
-  let output = getPrefix();
+  let output = getPrefixPath();
 
   if (!output)
     return {
       error: new Error(`Failed to locate npm prefix for globally installed modules.`)
     }
 
-  output = join(output, 'lib/node_modules');
-  const globalDirs = getDirectories(output);
-  const linkedDirs = getLinked(globalDirs);
+  output = getGlobalPath();
+  const linkedDirs = getLinked();
 
   // [installed, linked]
   let installed = 0;
   let linked = 0;
 
-  const isAll = argv.includes('-d') || argv.includes('--detail')
+  const isAll = argv.includes('-g') || argv.includes('--global')
   const tableSrc =
     isAll ? globalDirs.names : dependencies;
 
@@ -244,12 +299,15 @@ if (cmd === 'help') {
 }
 
 else if (cmd === 'path') {
-  //const dir = join(__dirname, '..');
-  console.log(__dirname + '\n');
+  console.log(__dirname);
+}
+
+else if (cmd === 'prefix') {
+  console.log(getPrefixPath() || '');
 }
 
 else if (cmd === 'version') {
-  console.log(pkg.version + '\n');
+  console.log(pkg.version);
 }
 
 else if (cmd === 'upgrade') {
