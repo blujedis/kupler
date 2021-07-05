@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Local only package for linking globals such as React to avoid conflict.",
   "files": [
-    "bin"
+    "bin",
+    "fixtures"
   ],
   "bin": {
     "kup": "bin/cli.js",
@@ -30,7 +31,7 @@
   "dependencies": {
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
-    "react2": "npm:react@^16.14.0"
+    "react2": "npm:react@^17.0.2"
   },
   "devDependencies": {
     "@types/react": "^17.0.13",
@@ -38,6 +39,7 @@
     "ansi-colors": "^4.1.1",
     "global-dirs": "^3.0.0",
     "log-symbols": "^5.0.0",
+    "npm-check-updates": "^11.8.1",
     "table": "^6.7.1"
   }
 }

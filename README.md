@@ -22,10 +22,10 @@ $ npm install kupler -g
 
 You can run this command from anywhere the package will only be installed in Kupler's node modules.
 
-NOTE: to update/upgrade packages simply run <code>kup upgrade</code> however you may wish to uninstall and then reinstall for greater control.
+NOTE: to update/upgrade packages simply run <code>kupler upgrade</code> however you may wish to uninstall and then reinstall for greater control.
 
 ```sh
-$ kup install react
+$ kupler install react
 ```
 
 ## Make the Package Global
@@ -33,7 +33,7 @@ $ kup install react
 This is the same as if you navigated to the React directory within Kupler's node_modules and ran <code>npm link</code>
 
 ```sh
-$ kup link react
+$ kupler link react
 ```
 
 ## Use in Project
@@ -42,7 +42,7 @@ Once the above steps have been completed you can now use the linked package in a
 
 ```sh
 $ cd /some/other/project/dir
-$ kup use react
+$ kupler use react
 ```
 
 > REMINDER: linking and unlinking are used in Kupler to link it's installed packages, the "use" and "unuse commands are for using those linked packages in another package!
@@ -52,7 +52,9 @@ $ kup use react
 To show the linked package status run the following:
 
 ```sh
-kup status
+kupler status 
+# or
+kupler status -g
 ```
 
 You should see something similar to the below:
@@ -62,4 +64,8 @@ You should see something similar to the below:
 You can also show the status of all globally linked packages. Just add the **-g** or **--global** flag. Since we are looking at global packages we provide the path where they are linked. There is no need to show this path without the --global flag as we know they are only linked locally.
 
 ![Link Status Image](fixtures/status-all.png)
+
+## Npm vs Yarn
+
+Kupler works with either. If you install using [Yarn](https://yarnpkg.com) then Kupler will use Yarn otherwise it will use [Npm](https://npmjs.org)
 

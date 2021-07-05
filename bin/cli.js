@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { table } from 'table';
+import { table, getBorderCharacters } from 'table';
 import { fileURLToPath } from 'url';
 import { join, dirname, sep } from 'path';
 import { existsSync, readdirSync, readFileSync, realpathSync, symlinkSync, unlinkSync } from 'fs';
@@ -8,18 +8,17 @@ import { spawnSync as spawn } from 'child_process';
 import nodeDirs from 'global-dirs';
 import colors from 'ansi-colors';
 import symbols from 'log-symbols';
-
 const __dirname = getDirname();
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json')).toString());
 const dependencies = Object.keys(pkg.dependencies);
-
 const argv = process.argv.slice(2);
+const hasYarn = existsSync(join(__dirname, 'yarn.lock'));
+const runWith = hasYarn ? 'yarn' : 'npm';
 const appName = 'kupler';
 const cmd = argv.shift();
 const cwd = process.cwd();
 const globalDirs = getDirectories(getGlobalPath());
-const allowedCommands = ['link', 'unlink', 'help', 'status', 'path', 'version', 'install', 'uninstall', 'upgrade', 'prefix', 'use', 'unuse'];
-
+const allowedCommands = ['link', 'unlink', 'help', 'status', 'path', 'version', 'install', 'uninstall', 'upgrade', 'prefix', 'use', 'unuse', 'add', 'remove'];
 
 if (!allowedCommands.includes(cmd)) {
   const commandList = `${allowedCommands.join('\n')}`
@@ -34,20 +33,21 @@ ${colors.blue('Kupler')}
 ${colors.dim('version: ' + pkg.version)}
 ${colors.cyan('-'.repeat(70))}
 
-${colors.dim('usage: $ $ <command> [module] [...options]')}
+${colors.dim(`usage: $ ${appName} <command> [module] [...options]`)}
 
 ${colors.cyan('commands:')}
-  install     installs a new package
-  uninstall   uninstalls an existing package
-  link        links locally installed package
-  unlink      unlinks locally installed package
-  use         links linked package to current
-  unuse       unlinks locally linked packaged
-  status      lists global linked package status table
-  version     displays Kupler version
-  path        displays Kupler install path
-  prefix      displays Nodes prefix path
-  help        displays Kupler menu
+  installm, add        installs a new package
+  uninstall, remove    uninstalls an existing package
+  link                 links locally installed package
+  unlink               unlinks locally installed package
+  use                  links linked package to current
+  unuse                unlinks locally linked packaged
+  upgrade              runs upgrade-interactive or npm-check-updates
+  status               lists global linked package status table
+  version              displays Kupler version
+  path                 displays Kupler install path
+  prefix               displays Nodes prefix path
+  help                 displays Kupler menu
 
 ${colors.cyan('options:')}
   -g, --global   display all globals & status
@@ -63,6 +63,8 @@ function getPrefixPath() {
 };
 
 function getGlobalPath() {
+  if (runWith === 'yarn')
+    return join(nodeDirs.yarn.packages, '../../link'); // need to make sure this works on windows.
   return nodeDirs.npm.packages;
 }
 
@@ -128,6 +130,15 @@ const runLinkUnlink = (command, moduleName) => {
   let child;
   const rundir = join(__dirname, `node_modules/${moduleName}`);
 
+  const successMessage = (type = command, name = moduleName) => {
+    const useType = type === 'link' ? 'use' : 'unuse';
+    const typeAlt = type === 'link' ? 'linked' : 'unlinked';
+    return [
+      `${colors.green('success')} ${typeAlt} "${name}"`,
+      `${colors.blue('info')} you can now run \`${appName} ${useType} "${name}"\` in projects you wish to ${useType} this resource.`
+    ].join('\n');
+  };
+
   // Perhaps there's a syntax we can use but running
   // npm link in the directory will only duplicate the
   // link and not create a new link to the alias package
@@ -138,15 +149,18 @@ const runLinkUnlink = (command, moduleName) => {
       const globalLinkPath = join(getGlobalPath(), moduleName);
 
       if (command === 'link') {
+
         symlinkSync(rundir, globalLinkPath);
-        console.log(rundir, '->', globalLinkPath);
+        console.log(successMessage());
+
       }
 
       else {
-        unlinkSync(globalLinkPath);
-        console.log('unlinked: ' + rundir, '->', globalLinkPath);
-      }
 
+        unlinkSync(globalLinkPath);
+        console.log(successMessage());
+
+      }
 
       child = {
         error: null
@@ -162,7 +176,7 @@ const runLinkUnlink = (command, moduleName) => {
 
   }
   else {
-    child = spawn('npm', [command], { stdio: 'inherit', cwd: rundir });
+    child = spawn(runWith, [command], { stdio: 'inherit', cwd: rundir });
   }
 
   return child;
@@ -174,8 +188,14 @@ const runInstallUninstall = (command, moduleName) => {
   const rundir = __dirname;
   if (moduleName)
     argv.unshift(moduleName);
+
+  // Help the user out if they tried to install
+  // a package with "install" instead of "add" when using yarn
+  if (runWith === 'yarn' && command === 'install' && moduleName)
+    command = 'add';
+
   const args = [command, ...argv];
-  const child = spawn('npm', args, { stdio: 'inherit', cwd: rundir });
+  const child = spawn(runWith, args, { stdio: 'inherit', cwd: rundir });
 
   return child;
 
@@ -205,7 +225,7 @@ const runUseUnuse = (command, moduleName) => {
   const _command = command === 'use' ? 'link' : 'unlink';
   const rundir = cwd;
   const args = [_command, moduleName];
-  const child = spawn('npm', args, { stdio: 'inherit', cwd: rundir });
+  const child = spawn(runWith, args, { stdio: 'inherit', cwd: rundir });
 
   return child;
 
@@ -214,8 +234,11 @@ const runUseUnuse = (command, moduleName) => {
 const runUpgrade = (command) => {
 
   const rundir = __dirname;
-  const args = ['npm-check-updates', '-u'];
-  const child = spawn('npx', args, { stdio: 'inherit', cwd: rundir });
+  const shouldAddUpgrade = runWith === 'npm' && !argv.some(v => ['-u', '--upgrade'].includes(v));
+  const args = runWith === 'yarn' ? ['upgrade-interactive', ...argv] : ['npm-check-updates', ...argv];
+  if (shouldAddUpgrade)
+    args.push('-u');
+  const child = spawn(runWith, args, { stdio: 'inherit', cwd: rundir });
 
   return child;
 
@@ -294,6 +317,7 @@ const runStatus = () => {
 
 };
 
+
 if (cmd === 'help') {
   console.log(help);
 }
@@ -316,7 +340,7 @@ else if (cmd === 'upgrade') {
     console.error(colors.red(child.error.name + ': ' + child.error.message) + '\n');
 }
 
-else if (['install', 'uninstall'].includes(cmd)) {
+else if (['install', 'uninstall', 'add', 'remove'].includes(cmd)) {
 
   const child = runInstallUninstall(cmd, argv.shift());
 
