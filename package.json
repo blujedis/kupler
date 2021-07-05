@@ -1,0 +1,41 @@
+{
+  "name": "kupler",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Local only package for linking globals such as React to avoid conflict.",
+  "files": [
+    "bin"
+  ],
+  "bin": {
+    "kup": "bin/cli.js",
+    "kupler": "bin/cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Blujedi LLC <blujedicorp@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/blujedis/kupler#readme",
+  "bugs": {
+    "url": "https://github.com/blujedis/kupler/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blujedis/kupler.git"
+  },
+  "engines": {
+    "node": ">= 10.13.0"
+  },
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "^17.0.13",
+    "@types/react-dom": "^17.0.8",
+    "ansi-colors": "^4.1.1",
+    "log-symbols": "^5.0.0",
+    "table": "^6.7.1"
+  }
+}
