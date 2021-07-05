@@ -38,7 +38,7 @@
     "ansi-colors": "^4.1.1",
     "eslint": "^7.26.0",
     "global-dirs": "^3.0.0",
-    "husky": "^6.0.0",
+    "husky": "^7.0.0",
     "lint-staged": "^11.0.0",
     "log-symbols": "^5.0.0",
     "npm-check-updates": "^11.8.1",
