@@ -116,4 +116,5 @@ web_modules/
 .tmp
 temp.js
 **/.DS_Store
+dependencies.json
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { table, getBorderCharacters } from 'table';
+import { table } from 'table';
 import { fileURLToPath } from 'url';
 import { join, dirname, sep } from 'path';
 import { existsSync, readdirSync, readFileSync, realpathSync, symlinkSync, unlinkSync } from 'fs';
@@ -8,6 +8,7 @@ import { spawnSync as spawn } from 'child_process';
 import nodeDirs from 'global-dirs';
 import colors from 'ansi-colors';
 import symbols from 'log-symbols';
+
 const __dirname = getDirname();
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json')).toString());
 const dependencies = Object.keys(pkg.dependencies);
@@ -18,7 +19,8 @@ const appName = 'kupler';
 const cmd = argv.shift();
 const cwd = process.cwd();
 const globalDirs = getDirectories(getGlobalPath());
-const allowedCommands = ['link', 'unlink', 'help', 'status', 'path', 'version', 'install', 'uninstall', 'upgrade', 'prefix', 'use', 'unuse', 'add', 'remove'];
+const isWin = process.platform === 'win32';
+const allowedCommands = ['link', 'unlink', 'help', 'status', 'path', 'version', 'install', 'uninstall', 'upgrade', 'prefix', 'use', 'unuse', 'add', 'remove', 'open'];
 
 if (!allowedCommands.includes(cmd)) {
   const commandList = `${allowedCommands.join('\n')}`
@@ -44,6 +46,7 @@ ${colors.cyan('commands:')}
   unuse                unlinks locally linked packaged
   upgrade              runs upgrade-interactive or npm-check-updates
   status               lists global linked package status table
+  open                 opens directory where global links are stored
   version              displays Kupler version
   path                 displays Kupler install path
   prefix               displays Nodes prefix path
@@ -317,6 +320,16 @@ const runStatus = () => {
 
 };
 
+const runOpen = () => {
+
+  const command = isWin ? 'start' : 'open';
+  const rundir = getGlobalPath();
+  const child = spawn(command, ['.'], { stdio: 'inherit', cwd: rundir });
+
+  return child;
+
+};
+
 
 if (cmd === 'help') {
   console.log(help);
@@ -336,6 +349,12 @@ else if (cmd === 'version') {
 
 else if (cmd === 'upgrade') {
   const child = runUpgrade(cmd);
+  if (child.error)
+    console.error(colors.red(child.error.name + ': ' + child.error.message) + '\n');
+}
+
+else if (cmd === 'open') {
+  const child = runOpen();
   if (child.error)
     console.error(colors.red(child.error.name + ': ' + child.error.message) + '\n');
 }

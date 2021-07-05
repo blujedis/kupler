@@ -69,3 +69,34 @@ You can also show the status of all globally linked packages. Just add the **-g*
 
 Kupler works with either. If you install using [Yarn](https://yarnpkg.com) then Kupler will use Yarn otherwise it will use [Npm](https://npmjs.org)
 
+## Can I Use Npm or Yarn Manually
+
+Of course it's just a package like any other. The subset of commands are those that you would use with **Kupler**. There is no intent on creating a complete wrapper around Npm or Yarn. So if you wish to install locally see the next section.
+
+## Installing Locally Instead of Globally
+
+If you do not wish to install **Kupler** globally you can certainly do so locally. All you need to do to add Kupler to your path after installing locally is to run link on the project itself and you're ready to go.
+
+Here's the process. Navigate to the directory you wish to install to.
+
+```sh
+$ git clone https://github.com/blujedis/kupler.git
+$ cd kupler
+$ npm install #or yarn install
+$ npm link #or yarn link
+```
+
+> Perhaps we'll make a "create-kupler" package to do the above automatically :)
+
+## TODO
+
+Lots of redundancy in the code as this was slapped together, feel free to clean up and PR. If and when we get more time perhaps we can clean some of this up, add better docs, but uhhhh not likely :)
+
+## Change
+
+See [CHANGELOG.md](CHANGELOG.md)
+
+## License
+
+See [LICENSE](LICENSE)
+
