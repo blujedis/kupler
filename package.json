@@ -1,6 +1,6 @@
 {
   "name": "kupler",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "description": "Local only package for linking globals such as React to avoid conflict.",
   "files": [
@@ -38,7 +38,9 @@
   "engines": {
     "node": ">= 10.13.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "react": "16.14.1"
+  },
   "devDependencies": {
     "@commitlint/cli": "^12.1.4",
     "@commitlint/config-conventional": "^12.1.4",

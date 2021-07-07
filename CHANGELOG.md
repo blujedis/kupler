@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.2](https://github.com/blujedis/kupler/compare/v0.0.1...v0.0.2) (2021-07-07)
+
+### Features
+
+- can now use as alias name ([af91245](https://github.com/blujedis/kupler/commit/af912452df118781011b9695291189f613af102a))
+
 ### 0.0.1 (2021-07-05)
 
 ### Features
