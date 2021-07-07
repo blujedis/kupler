@@ -1,18 +1,18 @@
-# Kupler (Experimental)  
+# Kupler (Experimental)
 
-Utility for managing globally linked packages. One of the issues you run into with packages like [React](https://reactjs.org) is that you cannot run multiple instances of it. This requires you to link your library or other package to the same instance of react. 
+Utility for managing globally linked packages. One of the issues you run into with packages like [React](https://reactjs.org) is that you cannot run multiple instances of it. This requires you to link your library or other package to the same instance of react.
 
-The issues arises when you forget where you linked it. There are occassions where even running <code>--force</code> to remove the link is problematic. 
+The issues arises when you forget where you linked it. There are occassions where even running <code>--force</code> to remove the link is problematic.
 
 Kupler simply provides a management of packages that are going to be used for linking to.
 
 ### Doesn't NPM Do This Already?
 
-Yeah pretty much, basically all we're doing here is adding a few helpers to better understand what's linked and where, and it ensures thes packages are always linked from one specific place. Again this prevents issues where we link a package then move it, delete or whatever. Kupler just makes this all a little cleaner. 
+Yeah pretty much, basically all we're doing here is adding a few helpers to better understand what's linked and where, and it ensures thes packages are always linked from one specific place. Again this prevents issues where we link a package then move it, delete or whatever. Kupler just makes this all a little cleaner.
 
 ## Getting Started
 
-Globally install the package. 
+Globally install the package.
 
 ```sh
 $ npm install kupler -g
@@ -47,12 +47,12 @@ $ kupler use react
 
 > REMINDER: linking and unlinking are used in Kupler to link it's installed packages, the "use" and "unuse commands are for using those linked packages in another package!
 
-## Show Status 
+## Show Status
 
 To show the linked package status run the following:
 
 ```sh
-kupler status 
+kupler status
 # or
 kupler status -g
 ```
@@ -92,6 +92,8 @@ $ npm link #or yarn link
 
 Lots of redundancy in the code as this was slapped together, feel free to clean up and PR. If and when we get more time perhaps we can clean some of this up, add better docs, but uhhhh not likely :)
 
+Not really tested for Windows. Generally should work but not tested.
+
 ## Change
 
 See [CHANGELOG.md](CHANGELOG.md)
@@ -99,4 +101,3 @@ See [CHANGELOG.md](CHANGELOG.md)
 ## License
 
 See [LICENSE](LICENSE)
-

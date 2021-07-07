@@ -2,8 +2,9 @@
 
 import { table } from 'table';
 import { fileURLToPath } from 'url';
-import { join, dirname, sep } from 'path';
-import { existsSync, readdirSync, readFileSync, realpathSync, symlinkSync, unlinkSync } from 'fs';
+import { join, dirname } from 'path';
+import { existsSync, readdirSync, readFileSync, realpathSync, symlinkSync, unlinkSync, writeFileSync, mkdirSync } from 'fs';
+import { homedir } from 'os';
 import { spawnSync as spawn } from 'child_process';
 import nodeDirs from 'global-dirs';
 import colors from 'ansi-colors';
@@ -20,7 +21,10 @@ const cmd = argv.shift();
 const cwd = process.cwd();
 const globalDirs = getDirectories(getGlobalPath());
 const isWin = process.platform === 'win32';
-const allowedCommands = ['link', 'unlink', 'help', 'status', 'path', 'version', 'install', 'uninstall', 'upgrade', 'prefix', 'use', 'unuse', 'add', 'remove', 'open'];
+const confRoot = join(homedir(), '.kupler');
+const confPath = join(confRoot, 'conf.json');
+const conf = getConf();
+const allowedCommands = ['link', 'unlink', 'help', 'status', 'path', 'version', 'install', 'uninstall', 'upgrade', 'prefix', 'use', 'unuse', 'add', 'remove', 'open', 'show'];
 
 if (!allowedCommands.includes(cmd)) {
   const commandList = `${allowedCommands.join('\n')}`
@@ -38,24 +42,79 @@ ${colors.cyan('-'.repeat(70))}
 ${colors.dim(`usage: $ ${appName} <command> [module] [...options]`)}
 
 ${colors.cyan('commands:')}
-  installm, add        installs a new package
-  uninstall, remove    uninstalls an existing package
-  link                 links locally installed package
-  unlink               unlinks locally installed package
-  use                  links linked package to current
-  unuse                unlinks locally linked packaged
-  upgrade              runs upgrade-interactive or npm-check-updates
-  status               lists global linked package status table
-  open                 opens directory where global links are stored
-  version              displays Kupler version
-  path                 displays Kupler install path
-  prefix               displays Nodes prefix path
-  help                 displays Kupler menu
+  install, add            installs a new package
+  uninstall, remove       uninstalls an existing package
+  link                    links locally installed package
+  unlink                  unlinks locally installed package
+  use                     links linked package to current
+  unuse                   unlinks locally linked packaged
+  upgrade                 runs upgrade-interactive or npm-check-updates
+  status, show            lists global linked package status table
+  open                    opens directory where global links are stored
+  version                 displays Kupler version
+  path                    displays Kupler install path
+  prefix                  displays Nodes prefix path
+  help                    displays Kupler menu
 
 ${colors.cyan('options:')}
-  -g, --global   display all globals & status
+  -g, --global        display all globals & status        boolean
+
+${colors.cyan('examples:')}
+  ${appName} install react
+  ${appName} uninstall react
+  ${appName} link react
+  ${appName} use react
+  ${appName} install react16@npm:react@16.14.1
+  ${appName} link react16
+  ${appName} use react16 react ${colors.dim('(use react16 linked as react)')}
 `;
-;
+
+function isValidMessage(res) {
+  return (typeof res === 'object' && Object.keys(res).includes('error'))
+    || typeof res === 'string'
+    || (res instanceof Error);
+}
+
+function normalizeError(err) {
+  const msg = `${err.name}: ${err.message}`;
+  if (conf.showStack) {
+    const trace = err.stack.split('\n').slice(1).join('\n');
+    return {
+      msg,
+      trace
+    };
+  }
+  return { msg };
+}
+
+function handleError(res) {
+
+  if (!isValidMessage(res)) {
+    const err = new Error(`Cannot \`handleError\`, must be string, Error or spawnSync child object as response!`);
+    err.message = colors.red(err.message);
+    throw err;
+  }
+
+  const lines = [];
+  let err = res;
+
+  if (typeof res === 'string')
+    err = new Error(res);
+
+  if (typeof res === 'object' && Object.keys(res).includes('error'))
+    err = res.error;
+
+  err = normalizeError(res);
+  lines.push(colors.red(err.msg));
+
+  if (err.trace)
+    lines.push(err.trace);
+
+  const str = lines.join('\n');
+
+  console.error(str);
+
+}
 
 function getDirname() {
   return join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,7 +122,7 @@ function getDirname() {
 
 function getPrefixPath() {
   return nodeDirs.npm.prefix;
-};
+}
 
 function getGlobalPath() {
   if (runWith === 'yarn')
@@ -86,12 +145,50 @@ function getDirectories(source) {
         stats.isLinked = stats.isSymbolicLink && stats.realPath.includes(__dirname) && dependencies.includes(c.name);
         stats.isMissing = dependencies.includes(c.name) && stats.realPath.includes(__dirname) && !stats.pathExists;
       }
+      // eslint-disable-next-line no-empty
       catch (_) { }
       stats.realPath = stats.realPath || stats.path;
       a.stats[c.name] = stats;
       return a;
     }, { names: [], stats: {} });
 
+}
+
+function getConf() {
+  try {
+    const _conf = JSON.parse(readFileSync(confPath).toString());
+    return {
+      links: {},
+      ..._conf
+    };
+  }
+  catch (_) {
+    return {
+      links: {}
+    };
+  }
+}
+
+const saveConf = () => {
+  if (!existsSync(confRoot))
+    mkdirSync(confRoot);
+  writeFileSync(confPath, JSON.stringify(conf, null, 2));
+};
+
+const getUseAliases = (dir) => {
+  return conf.links[dir];
+};
+
+const saveUseAlias = (dir, moduleName, aliasName) => {
+  conf.links[dir] = conf.links[dir] || {};
+  conf.links[dir][moduleName] = aliasName;
+  saveConf();
+};
+
+const removeUseAlias = (dir, moduleName) => {
+  conf.links[dir] = conf.links[dir] || {};
+  delete conf.links[dir][moduleName];
+  saveConf();
 };
 
 const getLinked = () => {
@@ -102,9 +199,9 @@ const getLinked = () => {
   });
 };
 
-const getMissing = () => {
-  return Object.keys(globalDirs.stats).filter(v => globalDirs.stats[v].isMissing);
-};
+// const getMissing = () => {
+//   return Object.keys(globalDirs.stats).filter(v => globalDirs.stats[v].isMissing);
+// };
 
 const isInstalled = (moduleName) => {
   const pkgPath = join(__dirname, `node_modules/${moduleName}/package.json`);
@@ -115,7 +212,7 @@ const runLinkUnlink = (command, moduleName) => {
 
   if (!moduleName)
     return {
-      error: new Error(`cannot \'${command}\' using package name of undefined.`)
+      error: new Error(`cannot \`${command}\` using package name of undefined.`)
     }
 
   // checks if this package was install as
@@ -123,44 +220,46 @@ const runLinkUnlink = (command, moduleName) => {
   // this means it's an alias install and
   // we need to link differently.
   const isAlias = /^npm:/.test(pkg.dependencies[moduleName]);
+  const hasLinkAlias = argv.filter(v => !/--?/.test(v))[0];
 
   if (!isInstalled(moduleName)) {
     if (dependencies.includes(moduleName))
-      console.warn(`package.json includes \'${moduleName}\' but is not installed in node_modules.`)
-    return { error: new Error(`package \'${moduleName}\' is not installed.`) };
+      console.warn(colors.yellow(`package.json includes \`${moduleName}\` but is not installed in node_modules.`));
+    return { error: new Error(`package \`${moduleName}\` is not installed.`) };
+  }
+
+  if (hasLinkAlias) {
+    console.warn(colors.yellow(`Alias ${hasLinkAlias} is not valid for command \`${command}\`, did you mean to run: \`${appName} use ${moduleName} ${hasLinkAlias}\`?`))
+    process.exit();
   }
 
   let child;
-  const rundir = join(__dirname, `node_modules/${moduleName}`);
+  const sourcePath = join(__dirname, `node_modules/${moduleName}`);
 
   const successMessage = (type = command, name = moduleName) => {
     const useType = type === 'link' ? 'use' : 'unuse';
     const typeAlt = type === 'link' ? 'linked' : 'unlinked';
     return [
       `${colors.green('success')} ${typeAlt} "${name}"`,
-      `${colors.blue('info')} you can now run \`${appName} ${useType} "${name}"\` in projects you wish to ${useType} this resource.`
+      `${colors.blue('info')} you can now run \`${appName} ${useType} "${name}"\` in projects you wish to ${useType} this resource with.`
     ].join('\n');
   };
 
-  // Perhaps there's a syntax we can use but running
-  // npm link in the directory will only duplicate the
-  // link and not create a new link to the alias package
-  // which is what we need. So manually create the link.
   if (isAlias) {
     try {
 
-      const globalLinkPath = join(getGlobalPath(), moduleName);
+      const linkToPath = join(getGlobalPath(), moduleName);
 
       if (command === 'link') {
 
-        symlinkSync(rundir, globalLinkPath);
+        symlinkSync(sourcePath, linkToPath);
         console.log(successMessage());
 
       }
 
       else {
 
-        unlinkSync(globalLinkPath);
+        unlinkSync(linkToPath);
         console.log(successMessage());
 
       }
@@ -179,7 +278,7 @@ const runLinkUnlink = (command, moduleName) => {
 
   }
   else {
-    child = spawn(runWith, [command], { stdio: 'inherit', cwd: rundir });
+    child = spawn(runWith, [command, ...argv], { stdio: 'inherit', cwd: sourcePath });
   }
 
   return child;
@@ -197,6 +296,9 @@ const runInstallUninstall = (command, moduleName) => {
   if (runWith === 'yarn' && command === 'install' && moduleName)
     command = 'add';
 
+  if (runWith === 'yarn' && command === 'uninstall')
+    command = 'remove';
+
   const args = [command, ...argv];
   const child = spawn(runWith, args, { stdio: 'inherit', cwd: rundir });
 
@@ -208,33 +310,95 @@ const runUseUnuse = (command, moduleName) => {
 
   if (!moduleName)
     return {
-      error: new Error(`cannot \'${command}\' using package name of undefined.`)
+      error: new Error(`cannot \`${command}\` using package name of undefined.`)
     }
 
   // Don't allow use/unuse when in Kupler's own project.
   if (cwd === __dirname)
     return {
-      error: new Error(`running \'${command}\' within Kupler is prohibited. Did you mean to run ${command} in another project/directory?`)
+      error: new Error(`running \`${command}\` within Kupler is prohibited. Did you mean to run ${command} in another project/directory?`)
     }
 
   const linked = getLinked();
 
   if (!linked.includes(moduleName)) {
     return {
-      error: new Error(`command \'${command}\' failed, package \'${moduleName}\' is not linked in ${appName}.`)
+      error: new Error(`command \`${command}\` failed, package \`${moduleName}\` is not linked in ${appName}.`)
     }
   }
 
-  const _command = command === 'use' ? 'link' : 'unlink';
-  const rundir = cwd;
-  const args = [_command, moduleName];
-  const child = spawn(runWith, args, { stdio: 'inherit', cwd: rundir });
+  const successMessage = (type = command, name = moduleName) => {
+    const useType = type === 'use' ? 'unuse' : 'use';
+    const typeAlt = type === 'use' ? 'used' : 'unused';
+    const reuse = command === 'unuse' ? 'reuse' : null;
+    return [
+      `${colors.green('success')} ${typeAlt} "${name}"`,
+      `${colors.blue('info')} you can now run \`${appName} ${useType} "${name}"\` in projects you wish to ${reuse || useType} this resource with.`
+    ].join('\n');
+  };
 
-  return child;
+  const rundir = cwd;
+  const _command = command === 'use' ? 'link' : 'unlink';
+  let aliasName = argv.filter(v => !/--?/.test(v))[0];
+
+  const links = getUseAliases(rundir);
+
+  if (links && links[moduleName])
+    aliasName = links[moduleName];
+
+  if (aliasName) {
+
+    try {
+
+      const sourcePath = realpathSync(join(getGlobalPath(), moduleName));
+      const linkToPath = join(rundir, 'node_modules', aliasName)
+
+      if (_command === 'link') {
+
+
+        symlinkSync(sourcePath, linkToPath);
+        saveUseAlias(rundir, moduleName, aliasName);
+        console.log(successMessage());
+
+      }
+
+      else {
+
+        unlinkSync(linkToPath);
+        removeUseAlias(rundir, moduleName);
+        console.log(successMessage());
+
+      }
+
+      return {
+        error: null
+      };
+
+    }
+
+    catch (err) {
+
+      return {
+        error: err
+      };
+
+    }
+
+
+  }
+
+  else {
+
+    const args = [_command, moduleName, ...argv];
+    const child = spawn(runWith, args, { stdio: 'inherit', cwd: rundir });
+
+    return child;
+
+  }
 
 };
 
-const runUpgrade = (command) => {
+const runUpgrade = () => {
 
   const rundir = __dirname;
   const shouldAddUpgrade = runWith === 'npm' && !argv.some(v => ['-u', '--upgrade'].includes(v));
@@ -330,7 +494,6 @@ const runOpen = () => {
 
 };
 
-
 if (cmd === 'help') {
   console.log(help);
 }
@@ -350,13 +513,13 @@ else if (cmd === 'version') {
 else if (cmd === 'upgrade') {
   const child = runUpgrade(cmd);
   if (child.error)
-    console.error(colors.red(child.error.name + ': ' + child.error.message) + '\n');
+    handleError(child.error);
 }
 
 else if (cmd === 'open') {
   const child = runOpen();
   if (child.error)
-    console.error(colors.red(child.error.name + ': ' + child.error.message) + '\n');
+    handleError(child.error);
 }
 
 else if (['install', 'uninstall', 'add', 'remove'].includes(cmd)) {
@@ -364,7 +527,7 @@ else if (['install', 'uninstall', 'add', 'remove'].includes(cmd)) {
   const child = runInstallUninstall(cmd, argv.shift());
 
   if (child.error)
-    console.error(colors.red(child.error.name + ': ' + child.error.message) + '\n');
+    handleError(child.error);
 
 }
 
@@ -373,20 +536,24 @@ else if (['use', 'unuse'].includes(cmd)) {
   const child = runUseUnuse(cmd, argv.shift());
 
   if (child.error)
-    console.error(colors.red(child.error.name + ': ' + child.error.message) + '\n');
+    handleError(child.error);
 
 }
 
-else if (['link', 'unlink', 'status'].includes(cmd)) {
+else if (['show', 'status'].includes(cmd)) {
 
-  let child;
-
-  if (cmd === 'status')
-    child = runStatus();
-  else
-    child = runLinkUnlink(cmd, argv.shift());
+  const child = runStatus();
 
   if (child.error)
-    console.error(colors.red(child.error.name + ': ' + child.error.message) + '\n');
+    handleError(child.error);
+
+}
+
+else if (['link', 'unlink'].includes(cmd)) {
+
+  const child = runLinkUnlink(cmd, argv.shift());
+
+  if (child.error)
+    handleError(child.error);
 
 }

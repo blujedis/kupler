@@ -3,11 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Local only package for linking globals such as React to avoid conflict.",
-  "files": [
-    "bin",
-    "fixtures",
-    "prepost.cjs"
-  ],
+  "files": ["bin", "fixtures", "prepost.cjs"],
   "bin": {
     "kup": "bin/cli.js",
     "kupler": "bin/cli.js"
@@ -17,13 +13,7 @@
     "commit-post": "node ./prepost.cjs post",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "global",
-    "link",
-    "packages",
-    "react",
-    "alias"
-  ],
+  "keywords": ["global", "link", "packages", "react", "alias"],
   "kupler": {},
   "author": "Blujedi LLC <blujedicorp@gmail.com>",
   "license": "MIT",
@@ -38,7 +28,10 @@
   "engines": {
     "node": ">= 10.13.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "react": "^17.0.2",
+    "react16": "npm:react@16.14.0"
+  },
   "devDependencies": {
     "@commitlint/cli": "^12.1.4",
     "@commitlint/config-conventional": "^12.1.4",
@@ -53,16 +46,10 @@
     "table": "^6.7.1"
   },
   "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ]
+    "extends": ["@commitlint/config-conventional"]
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
-    ],
-    "*.{json,md,yml}": [
-      "prettier --write"
-    ]
+    "*.{js,jsx,ts,tsx}": ["eslint --fix"],
+    "*.{json,md,yml}": ["prettier --write"]
   }
 }

@@ -1,5 +1,4 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-node ./prepost.cjs pre
-lint-staged
+node ./prepost.cjs post
